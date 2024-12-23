@@ -1,7 +1,6 @@
 <!DOCTYPE html>
-
 <head>
-    <title>Automa Essay Correction</title>
+    <title>Admin Dashboard - Trusty Vote</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
@@ -13,21 +12,23 @@
 
 <body>
     <div class="container-fluid heading-container">
-        <h2 class="heading-line">SecureVote</h2>
-        <a type="button" href="logout"class="btn btn-default logout-button">Log Out</a>
-        <p class="tag-line">Admin Page</p>
+        <h2 class="heading-line">Trusty Vote</h2>
+        <a type="button" href="logout" class="btn btn-default logout-button">Log Out</a>
+        <p class="tag-line">Admin Dashboard</p>
     </div>
-    <div>
+
+    <div class="container status-message">
       {% if flag %}
-        <h2 style="color: green; margin:5% 1%;text-align:center;">The Votes are Valid and not Tampered</h2>
+        <h2 class="status-text">The Votes are Valid and not Tampered</h2>
       {% endif %}
     </div>
-    <div class="container table-container" style="text-align:center;">            
-        <table style="text-align:center;" class="table">
+
+    <div class="container table-container">
+        <table class="table">
           <thead>
-            <tr >
-              <th style="text-align:center">Candidate Id</th>
-              <th style="text-align:center">No of Votes</th>
+            <tr>
+              <th>Candidate Id</th>
+              <th>Number of Votes</th>
             </tr>
           </thead>
           <tbody>
@@ -39,8 +40,7 @@
             {% endfor %}
           </tbody>
         </table>
-      </div>
+    </div>
 
 </body>
-
 </html>

@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 from flask_sqlalchemy import SQLAlchemy
 import sys
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 app.secret_key = "secret"
 node_address = str(uuid4()).replace('-', '')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
@@ -70,10 +70,10 @@ def home():
         #blockchain.add_transaction(voterId,candidate)
         k=blockchain.get_previous_block()
         if k!=0:
-            proof=blockchain.proof_of_work(k.get("proof", ""))    
+            proof=blockchain.proof_of_work(k.get("proof", ""))
         else:
-            proof=1    
-        #print(k)    
+            proof=1
+        #print(k)
         index = blockchain.create_block(proof,blockchain.hash(k),voterId,candidate)
         print(blockchain.hash(k))
         b=blockchain.give_chain()

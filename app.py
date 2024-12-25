@@ -1,5 +1,5 @@
 import datetime
-from blockchain import Blockchain
+from blockchain import Ledger
 import hashlib
 import json
 from flask import Flask, jsonify, request, redirect, url_for, render_template, flash, session
@@ -9,163 +9,157 @@ from urllib.parse import urlparse
 from flask_sqlalchemy import SQLAlchemy
 import sys
 
-app = Flask(__name__, static_folder='static')
-app.secret_key = "secret"
-node_address = str(uuid4()).replace('-', '')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
+# Initialize the Flask app
+app = Flask(__name__)
+app.secret_key = "super_secret_key"
+node_identifier = str(uuid4()).replace('-', '')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 db = SQLAlchemy(app)
 
-blockchain = Blockchain()
+# Initialize the Blockchain ledger
+ledger = Ledger()
 
-clear=0
+# Initialize a variable for clearing data
+reset_flag = 0
 
-
-def mine_block():
-    previous_block = blockchain.get_previous_block()
+# Function to mine a block in the blockchain
+def generate_block():
+    previous_block = ledger.get_last_block()
     previous_proof = previous_block['proof']
-    proof = blockchain.proof_of_work(previous_proof)
-    previous_hash = blockchain.hash(previous_block)
-    blockchain.add_transaction(voter=-1, candidate=-1)
-    block = blockchain.create_block(proof, previous_hash)
-    response = {'message': 'Congratulations, you just mined a block!',
-                'index': block['index'],
-                'timestamp': block['timestamp'],
-                'proof': block['proof'],
-                'previous_hash': block['previous_hash'],
-                'VotingTrans': block['VotingTrans']}
+    proof = ledger.calculate_proof_of_work(previous_proof)
+    previous_hash = ledger.compute_hash(previous_block)
+    ledger.add_vote(voter_id=-1, candidate_id=-1)
+    block = ledger.create_new_block(proof, previous_hash)
+    response = {
+        'message': 'Block successfully mined!',
+        'index': block['index'],
+        'timestamp': block['timestamp'],
+        'proof': block['proof'],
+        'previous_hash': block['previous_hash'],
+        'votes': block['votes']
+    }
     return jsonify(response), 200
 
-def is_valid():
-    is_valid=blockchain.is_chain_valid()
-    if is_valid:
-        response = 1
-    else:
-        response = 0
-    return response
+# Function to validate the blockchain
+def validate_chain():
+    is_chain_valid = ledger.validate_ledger()
+    return 1 if is_chain_valid else 0
 
-class User(db.Model):
-    """ Create user table"""
+# Database model for storing user information
+class Account(db.Model):
+    """ Define the database schema for user accounts """
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True)
     password = db.Column(db.String(80))
-    category = db.Column(db.Integer)
+    role = db.Column(db.Integer)
 
     def __init__(self, username, password):
         self.username = username
         self.password = password
 
-
-@app.route('/', methods=['GET', 'POST'])
-def home():
+# Home route
+def main_page():
     if request.method == 'GET':
         if 'logged_in' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('login_page'))
         else:
-            return render_template('index.html', user=request.args.get('user'))
+            return render_template('home.html', user=request.args.get('user'))
     else:
-        voterId = int(request.form['userId'])
-        candidate = int(request.form['optradio'])
-        if not voterId or not candidate:
-            return render_template('success.html', flag=0, user=voterId)
-        #blockchain.add_transaction(voterId,candidate)
-        k=blockchain.get_previous_block()
-        if k!=0:
-            proof=blockchain.proof_of_work(k.get("proof", ""))
-        else:
-            proof=1
-        #print(k)
-        index = blockchain.create_block(proof,blockchain.hash(k),voterId,candidate)
-        print(blockchain.hash(k))
-        b=blockchain.give_chain()
-        print("chain is", b)
-        if index == None:
-            return render_template('success.html', flag=0, user=voterId)
-        else:
-            if len(blockchain.VotingTrans) == 10:
-                mine_block()
-            return render_template('success.html', flag=1, candidateId=candidate, user=voterId), 200
+        voter_id = int(request.form['userId'])
+        candidate_id = int(request.form['optradio'])
+        if not voter_id or not candidate_id:
+            return render_template('result.html', success_flag=0, user=voter_id)
 
+        previous_block = ledger.get_last_block()
+        if previous_block:
+            proof = ledger.calculate_proof_of_work(previous_block.get("proof", ""))    
+        else:
+            proof = 1    
+        
+        index = ledger.create_new_block(proof, ledger.compute_hash(previous_block), voter_id, candidate_id)
+        if index is None:
+            return render_template('result.html', success_flag=0, user=voter_id)
+        else:
+            if len(ledger.votes) == 10:
+                generate_block()
+            return render_template('result.html', success_flag=1, candidate=candidate_id, user=voter_id), 200
 
+# Login route
 @app.route('/login', methods=['GET', 'POST'])
-def login():
-    """Login Form"""
+def login_page():
+    """ Render the login page and handle login logic """
     if request.method == 'GET':
         return render_template('login.html')
     else:
-        name = request.form['username']
-        passw = request.form['password']
-        data = User.query.filter_by(username=name, password=passw).first()
-        if data is not None:
-            admin = data.category
-            if admin == 0:
-                userId = data.id
+        username = request.form['username']
+        password = request.form['password']
+        user = Account.query.filter_by(username=username, password=password).first()
+        if user:
+            if user.role == 0:  # Regular user
                 session['logged_in'] = True
-                return redirect(url_for('home', user=userId))
-            else:
+                return redirect(url_for('main_page', user=user.id))
+            else:  # Admin user
                 session['logged_in'] = True
-                return redirect(url_for('getResult'))
+                return redirect(url_for('admin_dashboard'))
         else:
-            # return "data is none"
             return render_template('login.html')
 
+# Logout route
 @app.route('/logout')
-def logout():
-    """Logout Form"""
+def logout_page():
+    """ Handle user logout """
     session.pop('logged_in', None)
-    return redirect(url_for('home'))
+    return redirect(url_for('main_page'))
 
-
+# Admin dashboard route
 @app.route('/admin', methods=['GET'])
-def getResult():
-    isValid = is_valid()
-    response=blockchain.getResult()
-    finalResult = response
-    print(type(finalResult), file=sys.stdout)
-    return render_template('admin.html',data = finalResult,flag = isValid)
+def admin_dashboard():
+    chain_valid = validate_chain()
+    results = ledger.calculate_results()
+    return render_template('admin_dashboard.html', data=results, validity_flag=chain_valid)
 
-
-# Getting the full Blockchain
-@app.route('/get_chain', methods=['GET'])
-def get_chain():
-    response={'chain': blockchain.give_chain(),
-                'length': len(blockchain.give_chain())}
+# Route to get the blockchain
+@app.route('/get_ledger', methods=['GET'])
+def fetch_ledger():
+    response = {
+        'chain': ledger.get_full_ledger(),
+        'length': len(ledger.get_full_ledger())
+    }
     return jsonify(response), 200
 
-
-
-# Part 3 - Decentralizing our Blockchain
-
-# Connecting new nodes
+# Route to connect new nodes
 @app.route('/connect_node', methods=['POST'])
-def connect_node():
-    json=request.get_json()
-    nodes=json.get('nodes')
+def add_new_node():
+    json_data = request.get_json()
+    nodes = json_data.get('nodes')
     if nodes is None:
-        return "No node", 400
+        return "No nodes provided", 400
     for node in nodes:
-        blockchain.add_node(node)
-    response={'message': 'All the nodes are now connected. The Hadcoin Blockchain now contains the following nodes:',
-                'total_nodes': list(blockchain.nodes)}
+        ledger.register_node(node)
+    response = {
+        'message': 'Nodes successfully connected.',
+        'total_nodes': list(ledger.nodes)
+    }
     return jsonify(response), 201
 
-
-# Replacing the chain by the longest chain if needed
+# Route to replace the chain with the longest chain if necessary
 @app.route('/replace_chain', methods=['GET'])
-def replace_chain():
-    is_chain_replaced=blockchain.replace_chain()
-    if is_chain_replaced:
-        response={'message': 'The nodes had different chains so the chain was replaced by the longest one.',
-                    'new_chain': blockchain.chain}
+def sync_chain():
+    chain_replaced = ledger.sync_with_longest_chain()
+    if chain_replaced:
+        response = {
+            'message': 'The chain was replaced with the longest one.',
+            'new_chain': ledger.chain
+        }
     else:
-        response={'message': 'All good. The chain is the largest one.',
-                    'actual_chain': blockchain.chain}
+        response = {
+            'message': 'Current chain is already the longest.',
+            'chain': ledger.chain
+        }
     return jsonify(response), 200
 
-
 if __name__ == '__main__':
-    app.debug=True
+    app.debug = True
     db.create_all()
-    app.secret_key="123"
+    app.secret_key = "another_secret_key"
     app.run(host='127.0.0.1', port=5000)
-
-

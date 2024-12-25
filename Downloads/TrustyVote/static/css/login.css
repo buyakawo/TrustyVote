@@ -1,0 +1,36 @@
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #4CAF50; /* Green background */
+  height: 100vh;
+}
+
+#login .container #login-row #login-column #login-box {
+  margin-top: 120px;
+  max-width: 600px;
+  height: auto;
+  border: 1px solid #2E7D32; /* Darker green border */
+  background-color: #A5D6A7; /* Lighter green background */
+  border-radius: 10px; /* Rounded corners */
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+#login .container #login-row #login-column #login-box #login-form {
+  padding: 20px;
+}
+
+#login .container #login-row #login-column #login-box #login-form #register-link {
+  margin-top: -85px;
+}
+
+h3.text-center {
+  color: #2E7D32; /* Dark green text */
+  font-family: 'Arial', sans-serif; /* Clean font */
+  font-weight: bold;
+  font-size: 36px; /* Increase font size */
+  text-transform: uppercase; /* Make it all uppercase */
+  letter-spacing: 2px; /* Add some spacing between letters */
+  margin-bottom: 20px; /* Add space below the title */
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2); /* Add a subtle shadow for depth */
+}
+
